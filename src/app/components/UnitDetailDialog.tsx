@@ -137,30 +137,30 @@ export const UnitDetailDialog: React.FC<UnitDetailDialogProps> = ({
           <Card>
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Parent Property</p>
-                  <p className="font-medium break-words">{parentProperty?.name}</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Parent Property</p>
+                  <p className="font-medium">{parentProperty?.name}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Unit Type</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Unit Type</p>
                   <p className="font-medium capitalize">{unit.type}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Rent Amount</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Rent Amount</p>
                   <p className="font-medium">₹{unit.rentAmount.toLocaleString()}/{unit.rentFrequency}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Status</p>
-                  <Badge variant={unit.status === 'occupied' ? 'default' : 'secondary'}>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <Badge variant={unit.status === 'occupied' ? 'default' : 'secondary'} className="w-fit">
                     {unit.status}
                   </Badge>
                 </div>
               </div>
               
               {unit.unitDetails && (
-                <div className="mt-4 pt-4 border-t">
-                  <p className="text-sm text-muted-foreground mb-1">Details</p>
-                  <p className="text-sm">{unit.unitDetails}</p>
+                <div className="mt-6 pt-6 border-t">
+                  <p className="text-sm text-muted-foreground mb-2">Details</p>
+                  <p className="text-sm leading-relaxed">{unit.unitDetails}</p>
                 </div>
               )}
             </CardContent>
@@ -170,43 +170,44 @@ export const UnitDetailDialog: React.FC<UnitDetailDialogProps> = ({
           {tenancy && tenant && (
             <Card>
               <CardContent className="pt-6">
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-6">
                   <UserIcon className="h-5 w-5 text-indigo-600" />
                   <h3 className="font-semibold">Current Tenant</h3>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Name</p>
-                    <p className="font-medium break-words">{tenant.name}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium">{tenant.name}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Email</p>
-                    <p className="text-sm break-all">{tenant.email}</p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="text-sm break-words">{tenant.email}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Phone</p>
-                    <p className="text-sm break-words">{tenant.phone || 'N/A'}</p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Phone</p>
+                    <p className="text-sm">{tenant.phone || 'N/A'}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Start Date</p>
-                    <p className="text-sm">{format(parseISO(tenancy.startDate), 'dd MMM yyyy')}</p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Start Date</p>
+                    <p className="text-sm font-medium">{format(parseISO(tenancy.startDate), 'dd MMM yyyy')}</p>
                   </div>
                 </div>
                 
-                <Separator className="my-4" />
+                <Separator className="my-6" />
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Rent Amount</p>
-                    <p className="font-medium">₹{tenancy.rentAmount.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">/{tenancy.rentFrequency}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Rent Amount</p>
+                    <p className="font-medium">₹{tenancy.rentAmount.toLocaleString()}
+                      <span className="text-xs text-muted-foreground ml-1">/{tenancy.rentFrequency}</span>
+                    </p>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Next Due Date</p>
-                    <div className="flex items-center gap-1 flex-wrap">
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Next Due Date</p>
+                    <div className="flex items-center gap-1.5">
                       <p className="text-sm font-medium">{format(parseISO(tenancy.nextDueDate), 'dd MMM yyyy')}</p>
                       {daysUntilDue < 0 && (
-                        <AlertCircle className="h-4 w-4 text-red-500" />
+                        <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
                       )}
                     </div>
                     {daysUntilDue >= 0 ? (
@@ -215,12 +216,12 @@ export const UnitDetailDialog: React.FC<UnitDetailDialogProps> = ({
                       <p className="text-xs text-red-500">{Math.abs(daysUntilDue)} days overdue</p>
                     )}
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Security Deposit</p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Security Deposit</p>
                     <p className="font-medium">₹{tenancy.securityDeposit.toLocaleString()}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Advance Balance</p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Advance Balance</p>
                     <p className="font-medium text-green-600">₹{tenancy.advanceBalance.toLocaleString()}</p>
                   </div>
                 </div>

@@ -813,7 +813,14 @@ export const PropertiesPage: React.FC = () => {
                         const tenant = tenantId ? tenants.find(t => t.id === tenantId) : null;
                         
                         return (
-                          <Card key={unit.id} className="border">
+                          <Card 
+                            key={unit.id} 
+                            className="border cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => {
+                              setSelectedUnit(unit);
+                              setShowUnitDetail(true);
+                            }}
+                          >
                             <CardContent className="pt-4">
                               <div className="space-y-3">
                                 <div className="flex justify-between items-start">
@@ -849,18 +856,11 @@ export const PropertiesPage: React.FC = () => {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => {
-                                      setSelectedUnit(unit);
-                                      setShowUnitDetail(true);
-                                    }}
-                                  >
-                                    <Eye className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
                                     className="flex-1"
-                                    onClick={() => handleEditUnit(unit)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditUnit(unit);
+                                    }}
                                   >
                                     <Edit className="h-3 w-3 mr-1" />
                                     Edit
@@ -868,7 +868,10 @@ export const PropertiesPage: React.FC = () => {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setDeletingUnit(unit)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeletingUnit(unit);
+                                    }}
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
@@ -907,7 +910,14 @@ export const PropertiesPage: React.FC = () => {
             const parent = parentProperties.find(p => p.id === property.parentPropertyId);
             
             return (
-              <Card key={property.id}>
+              <Card 
+                key={property.id}
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => {
+                  setSelectedUnit(property);
+                  setShowUnitDetail(true);
+                }}
+              >
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -954,18 +964,11 @@ export const PropertiesPage: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                          setSelectedUnit(property);
-                          setShowUnitDetail(true);
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
                         className="flex-1"
-                        onClick={() => handleEditUnit(property)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditUnit(property);
+                        }}
                       >
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
@@ -973,7 +976,10 @@ export const PropertiesPage: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setDeletingUnit(property)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingUnit(property);
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
