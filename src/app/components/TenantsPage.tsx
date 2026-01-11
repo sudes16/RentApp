@@ -11,8 +11,82 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from './ui/dialog';
 import { Users, Plus, Building2, IndianRupee, Calendar, Mail, Phone } from 'lucide-react';
-import { format, parseISO, addMonths, addYears, isAfter, differenceInDays } from 'date-fns';
+import { format, parseISO, addMonths, addYears, isAfter, differenceInDays, isBefore, startOfMonth } from 'date-fns';
 import { toast } from 'sonner';
+
+// Helper function to calculate unpaid months based on payment history
+const getUnpaidMonths = (tenancy: Tenancy, property: Property, payments: LegacyPayment[]): string[] => {
+  if (tenancy.rentFrequency !== 'monthly') {
+    // For non-monthly tenancies, use simple due date check
+    const today = new Date();
+    const dueDate = parseISO(tenancy.nextDueDate);
+    return isBefore(dueDate, today) ? [format(dueDate, 'MMMM yyyy')] : [];
+  }
+  
+  const unpaidMonths: string[] = [];
+  const startDate = parseISO(tenancy.startDate);
+  const today = new Date();
+  const nextDueDate = parseISO(tenancy.nextDueDate);
+  const tenancyPayments = payments.filter(p => p.tenancyId === tenancy.id);
+  
+  // Start from the first expected due date, going back from nextDueDate
+  let currentDueDate = new Date(nextDueDate);
+  
+  // Go backwards to find the earliest due date after start date (with safety limit)
+  let backwardIterations = 0;
+  while (isAfter(currentDueDate, startDate) && backwardIterations < 100) {
+    const prevDate = addMonths(currentDueDate, -1);
+    // Stop if going back would put us before the start date
+    if (isBefore(prevDate, startDate) || prevDate.getTime() < startDate.getTime()) {
+      break;
+    }
+    currentDueDate = prevDate;
+    backwardIterations++;
+  }
+  
+  // Ensure we don't start before the tenancy start date
+  if (isBefore(currentDueDate, startDate)) {
+    currentDueDate = new Date(nextDueDate);
+    // Find the first due date after start
+    while (isAfter(currentDueDate, startDate)) {
+      currentDueDate = addMonths(currentDueDate, -1);
+    }
+    currentDueDate = addMonths(currentDueDate, 1);
+  }
+  
+  // Now check each month from the first due date to today (with safety limit)
+  let forwardIterations = 0;
+  while (isBefore(currentDueDate, today) && forwardIterations < 100) {
+    // Double check we're not before start date
+    if (isBefore(currentDueDate, startDate)) {
+      currentDueDate = addMonths(currentDueDate, 1);
+      forwardIterations++;
+      continue;
+    }
+    
+    // Check if this month has been paid
+    const monthPayments = tenancyPayments.filter(p => {
+      const payDate = parseISO(p.date);
+      const expectedMonth = format(currentDueDate, 'MMMM yyyy');
+      const noteMatch = p.notes?.includes(expectedMonth);
+      const dateMatch = payDate.getMonth() === currentDueDate.getMonth() && 
+                       payDate.getFullYear() === currentDueDate.getFullYear();
+      return noteMatch || dateMatch;
+    });
+    
+    const totalPaid = monthPayments.reduce((sum, p) => sum + p.amount, 0);
+    const isPaid = totalPaid >= tenancy.rentAmount;
+    
+    if (!isPaid) {
+      unpaidMonths.push(format(currentDueDate, 'MMMM yyyy'));
+    }
+    
+    currentDueDate = addMonths(currentDueDate, 1);
+    forwardIterations++;
+  }
+  
+  return unpaidMonths;
+};
 
 // Helper function to calculate tenant status
 const getTenantStatus = (tenancy: Tenancy): { status: 'active' | 'late' | 'pending'; label: string; variant: 'default' | 'destructive' | 'secondary' } => {
@@ -900,41 +974,22 @@ export const TenantsPage: React.FC = () => {
                           variant={tenantStatus.status === 'late' ? 'destructive' : 'default'}
                           className="w-full text-xs"
                           onClick={() => {
-                            // Calculate all overdue months
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
-                            const dueDate = parseISO(tenancy.nextDueDate);
-                            dueDate.setHours(0, 0, 0, 0); // Reset to start of day
+                            const property = properties.find(p => p.id === tenancy.propertyId);
+                            if (!property) {
+                              toast.error('Property not found');
+                              return;
+                            }
+                            
+                            // Get unpaid months based on actual payment history
+                            const unpaidMonths = getUnpaidMonths(tenancy, property, payments);
                             
                             console.log('Payment Calculation:', {
                               tenantStartDate: tenancy.startDate,
                               nextDueDate: tenancy.nextDueDate,
-                              today: format(today, 'yyyy-MM-dd'),
-                              dueDate: format(dueDate, 'yyyy-MM-dd')
+                              unpaidMonths
                             });
                             
-                            const months: string[] = [];
-                            let currentDue = new Date(dueDate);
-                            
-                            // Count months where due date has passed
-                            while (currentDue < today) {
-                              const monthName = format(currentDue, 'MMMM yyyy');
-                              console.log('Adding overdue month:', monthName, 'due on', format(currentDue, 'yyyy-MM-dd'));
-                              months.push(monthName);
-                              if (tenancy.rentFrequency === 'monthly') {
-                                currentDue = addMonths(currentDue, 1);
-                              } else {
-                                currentDue = addYears(currentDue, 1);
-                              }
-                            }
-                            
-                            console.log('Total overdue months:', months.length, months);
-                            
-                            // If no overdue months, it means payment is for current/next period
-                            if (months.length === 0) {
-                              months.push(format(dueDate, 'MMMM yyyy'));
-                            }
-                            
+                            const months = unpaidMonths.length > 0 ? unpaidMonths : [format(parseISO(tenancy.nextDueDate), 'MMMM yyyy')];
                             const totalAmount = tenancy.rentAmount * months.length;
                             
                             setConfirmingPayment({
@@ -950,28 +1005,16 @@ export const TenantsPage: React.FC = () => {
                         >
                           <IndianRupee className="h-3 w-3 mr-1" />
                           {(() => {
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0); // Reset to start of day
-                            const dueDate = parseISO(tenancy.nextDueDate);
-                            dueDate.setHours(0, 0, 0, 0); // Reset to start of day
-                            let monthCount = 0;
-                            let currentDue = new Date(dueDate);
+                            const property = properties.find(p => p.id === tenancy.propertyId);
+                            if (!property) return 'Pay Rent';
                             
-                            while (currentDue < today) {
-                              monthCount++;
-                              if (tenancy.rentFrequency === 'monthly') {
-                                currentDue = addMonths(currentDue, 1);
-                              } else {
-                                currentDue = addYears(currentDue, 1);
-                              }
-                            }
-                            
-                            if (monthCount === 0) monthCount = 1;
+                            const unpaidMonths = getUnpaidMonths(tenancy, property, payments);
+                            const monthCount = unpaidMonths.length > 0 ? unpaidMonths.length : 1;
                             const total = tenancy.rentAmount * monthCount;
                             
                             return monthCount > 1 
                               ? `₹${total.toLocaleString()} (${monthCount} ${tenancy.rentFrequency === 'monthly' ? 'months' : 'periods'})`
-                              : `₹${tenancy.rentAmount.toLocaleString()} - ${format(dueDate, 'MMM yyyy')}`;
+                              : `₹${tenancy.rentAmount.toLocaleString()}`;
                           })()}
                         </Button>
                       </div>

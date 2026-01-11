@@ -1090,7 +1090,10 @@ export const PropertiesPage: React.FC = () => {
             })()
           : null}
         parentProperty={selectedUnit ? parentProperties.find(p => p.id === selectedUnit.parentPropertyId) || null : null}
-        payments={payments}
+        payments={selectedUnit ? (() => {
+          const tenancy = tenancies.find(t => t.propertyId === selectedUnit.id && t.status === 'active');
+          return tenancy ? payments.filter(p => p.tenancyId === tenancy.id) : [];
+        })() : []}
       />
     </div>
   );

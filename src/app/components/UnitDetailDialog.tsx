@@ -35,6 +35,7 @@ export const UnitDetailDialog: React.FC<UnitDetailDialogProps> = ({
     const breakdown = [];
     const startDate = parseISO(tenancy.startDate);
     const today = new Date();
+    const nextDueDate = parseISO(tenancy.nextDueDate);
     
     // Filter payments for this specific tenancy
     const tenancyPayments = payments.filter(p => p.tenancyId === tenancy.id);
@@ -43,15 +44,49 @@ export const UnitDetailDialog: React.FC<UnitDetailDialogProps> = ({
       tenancyId: tenancy.id,
       totalPayments: payments.length,
       tenancyPayments: tenancyPayments.length,
-      payments: tenancyPayments
+      payments: tenancyPayments,
+      startDate: format(startDate, 'yyyy-MM-dd'),
+      nextDueDate: format(nextDueDate, 'yyyy-MM-dd')
     });
     
-    let currentDate = startOfMonth(startDate);
+    // Start from the nextDueDate and go backwards
+    let currentDueDate = new Date(nextDueDate);
     
-    while (isBefore(currentDate, today) || currentDate.getMonth() === today.getMonth()) {
-      const monthKey = format(currentDate, 'yyyy-MM');
-      const dueDay = unit.dueDay || 5; // Default to 5th
-      const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), dueDay);
+    // Go backwards from nextDueDate to find all past due dates, but not before start date
+    while (isAfter(currentDueDate, startDate)) {
+      const prevDate = addMonths(currentDueDate, -1);
+      // Stop if going back would put us before the start date
+      if (isBefore(prevDate, startDate) || prevDate.getTime() < startDate.getTime()) {
+        break;
+      }
+      currentDueDate = prevDate;
+    }
+    
+    // Ensure we're not before start date
+    if (isBefore(currentDueDate, startDate)) {
+      // Find the first due date on or after the start date
+      currentDueDate = new Date(nextDueDate);
+      while (isAfter(currentDueDate, startDate)) {
+        currentDueDate = addMonths(currentDueDate, -1);
+      }
+      // Move forward to be after start date
+      if (isBefore(currentDueDate, startDate)) {
+        currentDueDate = addMonths(currentDueDate, 1);
+      }
+    }
+    
+    console.log('First due date to check:', format(currentDueDate, 'yyyy-MM-dd'));
+    
+    // Now go forward to build the breakdown
+    while ((isBefore(currentDueDate, today) || currentDueDate.getMonth() === today.getMonth()) && breakdown.length < 12) {
+      // Skip if this date is before the start date
+      if (isBefore(currentDueDate, startDate)) {
+        currentDueDate = addMonths(currentDueDate, 1);
+        continue;
+      }
+      
+      const monthKey = format(currentDueDate, 'yyyy-MM');
+      const dueDate = new Date(currentDueDate);
       
       // Find payments for this month from this tenancy's payments
       const monthPayments = tenancyPayments.filter(p => {
@@ -59,12 +94,12 @@ export const UnitDetailDialog: React.FC<UnitDetailDialogProps> = ({
         // Match by checking if payment note includes the month name
         // or if payment date is within a reasonable range of the month
         const payMonth = format(payDate, 'MMMM yyyy');
-        const expectedMonth = format(currentDate, 'MMMM yyyy');
+        const expectedMonth = format(currentDueDate, 'MMMM yyyy');
         
         // Check if payment note mentions this month OR payment was made in this month
         const noteMatch = p.notes?.includes(expectedMonth);
-        const dateMatch = payDate.getMonth() === currentDate.getMonth() && 
-                         payDate.getFullYear() === currentDate.getFullYear();
+        const dateMatch = payDate.getMonth() === currentDueDate.getMonth() && 
+                         payDate.getFullYear() === currentDueDate.getFullYear();
         
         return noteMatch || dateMatch;
       });
@@ -73,7 +108,8 @@ export const UnitDetailDialog: React.FC<UnitDetailDialogProps> = ({
       const isPaid = totalPaid >= tenancy.rentAmount;
       const isOverdue = !isPaid && isAfter(today, dueDate);
       
-      console.log(`Month ${format(currentDate, 'MMMM yyyy')}:`, {
+      console.log(`Month ${format(currentDueDate, 'MMMM yyyy')}:`, {
+        dueDate: format(dueDate, 'yyyy-MM-dd'),
         monthPayments: monthPayments.length,
         totalPaid,
         expected: tenancy.rentAmount,
@@ -83,7 +119,7 @@ export const UnitDetailDialog: React.FC<UnitDetailDialogProps> = ({
       
       breakdown.push({
         monthKey,
-        month: format(currentDate, 'MMMM yyyy'),
+        month: format(currentDueDate, 'MMMM yyyy'),
         dueDate,
         paid: totalPaid,
         expected: tenancy.rentAmount,
@@ -92,10 +128,7 @@ export const UnitDetailDialog: React.FC<UnitDetailDialogProps> = ({
         payments: monthPayments
       });
       
-      currentDate = addMonths(currentDate, 1);
-      
-      // Limit to last 12 months
-      if (breakdown.length >= 12) break;
+      currentDueDate = addMonths(currentDueDate, 1);
     }
     
     return breakdown.reverse();
